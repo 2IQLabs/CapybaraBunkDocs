@@ -1,0 +1,2531 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory System</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Основные стили */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #222222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            color: #FFFFFF;
+        }
+
+        .inventory-container {
+            width: 90%;
+            height: 90%;
+            position: relative;
+        }
+
+        /* Стили панелей */
+        .side-panel {
+            width: 280px;
+            height: 600px;
+            background-color: #393939;
+            border-radius: 26px;
+            position: absolute;
+            top: 20px;
+            padding: 20px;
+        }
+
+        .left-panel { left: 20px; }
+        .right-panel { right: 20px; }
+
+        /* Стили сетки */
+        .grid-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: grid;
+            gap: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .grid-cell {
+            border-radius: 26px;
+            width: 100px;
+            height: 100px;
+            transition: background-color 0.3s ease;
+            position: relative;
+        }
+
+        .grid-cell.occupied {
+            background-color: #4A4A4A;
+        }
+
+        .grid-cell.preview {
+            background-color: #3A3A3A;
+            opacity: 0.7;
+        }
+
+        /* Стили предметов */
+        .grid-item {
+            background-color: #666666;
+            border-radius: 26px;
+            position: absolute;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .item-label {
+            color: white;
+            font-size: 14px;
+            text-align: center;
+            padding: 5px;
+            user-select: none;
+        }
+
+        /* Стили статистики */
+        .stats-container {
+            margin-bottom: 30px;
+        }
+
+        .stat-block {
+            margin-bottom: 30px;
+        }
+
+        .stat-title {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-abbr {
+            color: #999999;
+            font-size: 14px;
+        }
+
+        .stat-scale {
+            display: flex;
+            gap: 8px;
+        }
+
+        .stat-point {
+            width: 40px;
+            height: 40px;
+            background: #1A1A1A;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+            color: #FFFFFF;
+        }
+
+        .stat-point.active {
+            background: #4CAF50;
+        }
+
+        .stat-point:hover:not(.active):not(.disabled) {
+            background: #2A2A2A;
+        }
+
+        .stat-point.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Стили элементов правой панели */
+        .item-control {
+            background: #2A2A2A;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .item-stats {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .item-counter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .item-counter button {
+            background: #1A1A1A;
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .item-counter button:hover:not(:disabled) {
+            background: #4CAF50;
+        }
+
+        .item-counter button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .item-counter .count {
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* Стили формул */
+        .formulas-block {
+            margin-top: 30px;
+            padding: 15px 0;
+            border-top: 1px solid #4A4A4A;
+        }
+
+        .formula-item {
+            margin-bottom: 15px;
+        }
+
+        .formula-title {
+            display: block;
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .formula-text {
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* Слоты рук */
+        .hands-slots {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+        }
+
+        .hand-slot {
+            width: 140px;
+            height: 140px;
+            background-color: #393939;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hand-slot .hand-item {
+            position: static; /* Отменяем absolute позиционирование */
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: transparent;
+        }
+
+        .hand-slot .item-label {
+            position: static;
+            padding: 0;
+            color: white;
+            font-size: 14px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .left-hand {
+            border-radius: 260px 26px 26px 26px;
+        }
+
+        .right-hand {
+            border-radius: 26px 260px 26px 26px;
+        }
+
+        .fist-item {
+            opacity: 0.5;
+        }
+
+        .load-block {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #4A4A4A;
+        }
+
+        .load-block .stat-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .load-block .formula-text {
+            color: #999999;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .load-block .formula {
+            color: #999999;
+        }
+
+        .load-states {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .load-state {
+            color: #999999;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .load-state.active {
+            color: #FFFFFF;
+        }
+
+        .grip-label {
+            font-size: 12px;
+            margin-top: 2;
+            text-align: center;
+        }
+
+        .item-label-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="inventory-container">
+        <div class="side-panel left-panel">
+            <div class="stats-container">
+                <div class="stat-block" id="size-stats">
+                    <div class="stat-title">
+                        Габариты
+                        <span class="stat-abbr">(Size) (SZ)</span>
+                    </div>
+                    <div class="stat-scale">
+                        <div class="stat-point" data-value="0">0</div>
+                        <div class="stat-point" data-value="1">1</div>
+                        <div class="stat-point" data-value="2">2</div>
+                        <div class="stat-point" data-value="3">3</div>
+                        <div class="stat-point active" data-value="4">4</div>
+                    </div>
+                </div>
+
+                <div class="stat-block" id="weight-stats">
+                    <div class="stat-title">
+                        Вес
+                        <span class="stat-abbr">(Weight) (WT)</span>
+                    </div>
+                    <div class="stat-scale">
+                        <div class="stat-point" data-value="0">0</div>
+                        <div class="stat-point" data-value="1">1</div>
+                        <div class="stat-point" data-value="2">2</div>
+                        <div class="stat-point" data-value="3">3</div>
+                        <div class="stat-point active" data-value="4">4</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="formulas-block">
+                <div class="formula-item">
+                    <span class="formula-title">Cell Matrix (CM)</span>
+                    <span class="formula-text">int[SZ+1, SZ+1]</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-container"></div>
+        <div class="side-panel right-panel"></div>
+
+        <div class="hands-slots">
+            <div class="hand-slot left-hand" data-slot="left"></div>
+            <div class="hand-slot right-hand" data-slot="right"></div>
+        </div>
+    </div>
+    <script>
+        // Константы и перечисления
+        const HAND_SLOTS = {
+            LEFT: 'left',
+            RIGHT: 'right'
+        };
+
+        const GRID_CELL_SIZE = 100;
+        const GRID_GAP = 20;
+
+        const GRIP_TYPES = {
+            ONE_HANDED: 'ONE_HANDED',    // Одноручное
+            HAND_HALF: 'HAND_HALF',      // Полуторное
+            TWO_HANDED: 'TWO_HANDED',    // Двуручное
+            HEAVY: 'HEAVY',              // Тяжелое
+            UNMOVABLE: 'UNMOVABLE'       // Неподъемное
+        };
+
+        const GRIP_LABELS = {
+            [GRIP_TYPES.ONE_HANDED]: 'Одноручный',
+            [GRIP_TYPES.HAND_HALF]: 'Полуторный',
+            [GRIP_TYPES.TWO_HANDED]: 'Двуручный',
+            [GRIP_TYPES.HEAVY]: 'Тяжёлый',
+            [GRIP_TYPES.UNMOVABLE]: 'Неподъёмный'
+        };
+
+        class GripManager {
+            static calculateStrength(weight) {
+                return weight + 1; // STR = WT + 1
+            }
+            
+            static getGripType(itemWeight, characterWeight) {
+                const strength = this.calculateStrength(characterWeight);
+                
+                if (itemWeight <= strength / 1.5) return GRIP_TYPES.ONE_HANDED;
+                if (itemWeight <= strength / 1.25) return GRIP_TYPES.HAND_HALF;
+                if (itemWeight <= strength) return GRIP_TYPES.TWO_HANDED;
+                if (itemWeight <= Math.floor(strength * 1.5)) return GRIP_TYPES.HEAVY;
+                return GRIP_TYPES.UNMOVABLE;
+            }
+
+            static canBePickedUp(gripType) {
+                return ![GRIP_TYPES.HEAVY, GRIP_TYPES.UNMOVABLE].includes(gripType);
+            }
+
+            static requiresTwoHands(gripType) {
+                return gripType === GRIP_TYPES.TWO_HANDED;
+            }
+
+            static canBeUsedOneHanded(gripType) {
+                return [GRIP_TYPES.ONE_HANDED, GRIP_TYPES.HAND_HALF].includes(gripType);
+            }
+
+            static isOneHanded(gripType) {
+                return gripType === GRIP_TYPES.ONE_HANDED;
+            }
+
+            static isHandHalf(gripType) {
+                return gripType === GRIP_TYPES.HAND_HALF;
+            }
+
+            static isTwoHanded(gripType) {
+                return gripType === GRIP_TYPES.TWO_HANDED;
+            }
+
+            // Проверяем возможность совместного использования предметов
+            static canBeUsedTogether(item1, item2, characterWeight) {
+                if (!item1 || !item2) return true;
+                if (item1.name === 'Кулаки' || item2.name === 'Кулаки') return true;
+
+                const grip1 = this.getGripType(item1.weight, characterWeight);
+                const grip2 = this.getGripType(item2.weight, characterWeight);
+
+                // Нельзя использовать два полуторных предмета
+                if (this.isHandHalf(grip1) && this.isHandHalf(grip2)) return false;
+
+                // Двуручное оружие нельзя комбинировать
+                if (this.isTwoHanded(grip1) || this.isTwoHanded(grip2)) return false;
+
+                // Одноручное можно комбинировать с одноручным или полуторным
+                return true;
+            }
+
+            // Проверяем, требует ли предмет обе руки
+            static requiresBothHands(item, characterWeight) {
+                if (!item || item.name === 'Кулаки') return false;
+                const gripType = this.getGripType(item.weight, characterWeight);
+                return this.isTwoHanded(gripType);
+            }
+        }
+
+
+        const loadBlock = document.createElement('div');
+            loadBlock.className = 'load-block';
+            loadBlock.innerHTML = `
+                <div class="stat-block">
+                    <div class="stat-title">
+                        Нагрузка
+                        <span class="stat-abbr">(Load) (LD)</span>
+                    </div>
+                    <div class="formula-text">
+                        <span class="formula">(WT+1)*3</span>
+                        = <span class="current-load">0</span>/<span class="max-load">0</span>
+                    </div>
+                    <div class="load-states">
+                        <div class="load-state" data-type="light" data-name="Лёгкая"></div>
+                        <div class="load-state" data-type="medium" data-name="Средняя"></div>
+                        <div class="load-state" data-type="heavy" data-name="Тяжёлая"></div>
+                        <div class="load-state" data-type="critical" data-name="Критическая"></div>
+                        <div class="load-state" data-type="overload" data-name="Перегруз"></div>
+                    </div>
+                </div>`;
+
+            // Добавляем в конец левой панели
+            document.querySelector('.left-panel').appendChild(loadBlock);
+
+
+
+        // Базовые классы
+        class Position {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
+        class Size {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+            }
+        }
+
+        // Класс предмета инвентаря
+        class InventoryItem {
+            constructor(name, sizeStr, weight) {
+                this.id = crypto.randomUUID();
+                this.name = name;
+                
+                // Парсим строку размера в формате "width;height"
+                const [width, height] = sizeStr.split(';').map(n => parseInt(n.trim()));
+                this.size = new Size(width, height);
+                
+                this.weight = weight;
+                this.position = null;
+            }
+
+            getDisplaySize() {
+                return {
+                    width: this.size.width * GRID_CELL_SIZE + (this.size.width - 1) * GRID_GAP,
+                    height: this.size.height * GRID_CELL_SIZE + (this.size.height - 1) * GRID_GAP
+                };
+            }
+        }
+
+        // Константы для цветов
+        const HAND_COLORS = {
+            LEFT: '#A8C66C',    // Зеленый для левой руки
+            RIGHT: '#D36E70',   // Красный для правой руки
+            BOTH: '#A3C1DA',    // Синий для обеих рук
+            DEFAULT: '#393939'   // Исходный цвет слота
+        };
+
+        // Состояние руки
+        class HandState {
+            constructor() {
+                this.item = null;        // Текущий предмет
+                this.isEmpty = true;     // Флаг пустой руки (кулаки)
+                this.color = HAND_COLORS.DEFAULT;
+            }
+
+            clear() {
+                this.item = null;
+                this.isEmpty = true;
+                this.color = HAND_COLORS.DEFAULT;
+            }
+        }
+
+        // Класс управления руками
+        class HandsManager {
+            constructor() {
+                // Состояния рук
+                this.hands = {
+                    left: new HandState(),
+                    right: new HandState()
+                };
+                
+                // Инициализация слотов из DOM
+                this.slots = new Map();
+                this.init();
+                
+                // Добавляем отслеживание событий мыши
+                this.setupEventListeners();
+
+                this.leftMousePressed = false;
+                this.rightMousePressed = false;
+                this.clickTimeout = null;
+            }
+
+            init() {
+                document.querySelectorAll('.hand-slot').forEach(slot => {
+                    const slotType = slot.dataset.slot;
+                    this.slots.set(slotType, {
+                        element: slot,
+                        state: this.hands[slotType]
+                    });
+                });
+            }
+
+            setupEventListeners() {
+                document.addEventListener('contextmenu', e => e.preventDefault());
+                document.addEventListener('selectstart', e => e.preventDefault());
+
+                // Отслеживаем нажатие кнопок мыши
+                document.addEventListener('mousedown', (e) => {
+                    const gridItem = e.target.closest('.grid-item');
+                    if (!gridItem) return;
+
+                    if (e.button === 0) this.leftMousePressed = true;
+                    if (e.button === 2) this.rightMousePressed = true;
+
+                    // Очищаем предыдущий таймаут
+                    if (this.clickTimeout) {
+                        clearTimeout(this.clickTimeout);
+                    }
+
+                    // Устанавливаем небольшую задержку для определения типа клика
+                    this.clickTimeout = setTimeout(() => {
+                        if (this.leftMousePressed && this.rightMousePressed) {
+                            this.handleBothClick(gridItem);
+                        } else {
+                            switch (e.button) {
+                                case 0: // ЛКМ
+                                    this.handleLeftClick(gridItem);
+                                    break;
+                                case 1: // СКМ
+                                    this.handleBothClick(gridItem);
+                                    break;
+                                case 2: // ПКМ
+                                    this.handleRightClick(gridItem);
+                                    break;
+                            }
+                        }
+                    }, 50); // 50мс должно хватить для определения двойного нажатия
+                });
+
+                // Отслеживаем отпускание кнопок мыши
+                document.addEventListener('mouseup', (e) => {
+                    if (e.button === 0) this.leftMousePressed = false;
+                    if (e.button === 2) this.rightMousePressed = false;
+                    
+                    // Очищаем таймаут при отпускании кнопки
+                    if (this.clickTimeout) {
+                        clearTimeout(this.clickTimeout);
+                        this.clickTimeout = null;
+                    }
+                });
+
+                // Колёсико мыши
+                document.addEventListener('wheel', (e) => {
+                    const gridItem = e.target.closest('.grid-item');
+                    if (gridItem) {
+                        e.preventDefault();
+                        this.handleBothClick(gridItem);
+                    }
+                });
+            }
+
+            // Обработчики кликов
+            handleLeftClick(itemElement) {
+                // Получаем базовую информацию
+                const item = this.getItemFromElement(itemElement);
+                const leftHandItem = this.hands.left.item;  // X рука
+                const rightHandItem = this.hands.right.item; // Y рука
+                const availableFists = window.gridManager.getAvailableFists();
+
+                // Блок 3: Операции с полуторными предметами
+                // Проверяем есть ли полуторный предмет в правой руке (Y)
+                if (rightHandItem) {
+                    const rightItemInfo = this.getFullItemInfo(rightHandItem);
+                    if (rightItemInfo) {
+                        const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                        const rightGripType = GripManager.getGripType(rightItemInfo.weight, characterWeight);
+                        
+                        if (GripManager.isHandHalf(rightGripType) && item) {
+                            const newItemInfo = this.getFullItemInfo(item);
+                            if (newItemInfo) {
+                                const newGripType = GripManager.getGripType(newItemInfo.weight, characterWeight);
+                                
+                                if (GripManager.isHandHalf(newGripType)) {
+                                    // Сбрасываем цвет текущего полуторного
+                                    const currentItemElement = this.findGridItemByName(rightHandItem.name, rightHandItem.index);
+                                    if (currentItemElement) {
+                                        window.gridManager.saveItemColor(rightHandItem.name, rightHandItem.index, '#666666');
+                                        currentItemElement.style.backgroundColor = '#666666';
+                                    }
+                                    
+                                    // Если есть одноручный в левой руке - перемещаем его в правую
+                                    if (leftHandItem) {
+                                        if (leftHandItem.name === 'Кулаки') {
+                                            // Если в левой руке кулаки - перемещаем их в правую
+                                            this.updateHandState('right', {
+                                                name: 'Кулаки',
+                                                index: leftHandItem.index
+                                            }, HAND_COLORS.RIGHT, false);
+                                        } else {
+                                            // Если в левой руке одноручный предмет
+                                            const leftItemInfo = this.getFullItemInfo(leftHandItem);
+                                            const leftGripType = GripManager.getGripType(leftItemInfo.weight, characterWeight);
+                                            
+                                            if (GripManager.isOneHanded(leftGripType)) {
+                                                this.updateHandState('right', leftHandItem, HAND_COLORS.RIGHT, false);
+                                            }
+                                        }
+                                    } else {
+                                        // Если левая рука пуста, нужно взять свободный кулак
+                                        const availableFists = window.gridManager.getAvailableFists();
+                                        if (availableFists.length > 0) {
+                                            this.updateHandState('right', {
+                                                name: 'Кулаки',
+                                                index: availableFists[0].fistId
+                                            }, HAND_COLORS.RIGHT, false);
+                                        }
+                                    }
+                                    
+                                    // Берём новый полуторный в левую руку
+                                    this.updateHandState('left', item, HAND_COLORS.LEFT, false);
+                                    
+                                    // Обновляем цвета
+                                    const newItemElement = this.findGridItemByName(item.name, item.index);
+                                    if (newItemElement) {
+                                        window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.LEFT);
+                                        newItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                                    }
+
+                                    // Обновляем цвета для правой руки
+                                    const rightItem = this.hands.right.item;
+                                    if (rightItem) {
+                                        const rightItemElement = this.findGridItemByName(rightItem.name, rightItem.index);
+                                        if (rightItemElement) {
+                                            window.gridManager.saveItemColor(rightItem.name, rightItem.index, HAND_COLORS.RIGHT);
+                                            rightItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                                        }
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Полуторный в обеих руках
+                if (leftHandItem && 
+                    rightHandItem && 
+                    leftHandItem.name === rightHandItem.name && 
+                    leftHandItem.index === rightHandItem.index) {
+                    
+                    const itemInfo = this.getFullItemInfo(leftHandItem);
+                    if (itemInfo) {
+                        const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                        const gripType = GripManager.getGripType(itemInfo.weight, characterWeight);
+                        
+                        if (GripManager.isHandHalf(gripType) && item) {
+                            const newItemInfo = this.getFullItemInfo(item);
+                            if (newItemInfo) {
+                                const newGripType = GripManager.getGripType(newItemInfo.weight, characterWeight);
+                                
+                                // Клик левой по одноручному
+                                if (GripManager.isOneHanded(newGripType)) {
+                                    // Сначала находим и сохраняем элементы
+                                    const currentItemElement = this.findGridItemByName(leftHandItem.name, leftHandItem.index);
+                                    const newItemElement = this.findGridItemByName(item.name, item.index);
+                                    
+                                    // Обновляем состояния рук без автоматического обновления цветов
+                                    this.updateHandState('left', item, HAND_COLORS.LEFT, false);
+                                    this.updateHandState('right', leftHandItem, HAND_COLORS.RIGHT, false);
+                                    
+                                    // Принудительно обновляем цвета
+                                    if (currentItemElement) {
+                                        window.gridManager.saveItemColor(leftHandItem.name, leftHandItem.index, HAND_COLORS.RIGHT);
+                                        currentItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                                    }
+                                    if (newItemElement) {
+                                        window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.LEFT);
+                                        newItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                                    }
+                                    return;
+                                }
+                                
+                                // Клик левой по другому полуторному
+                                if (GripManager.isHandHalf(newGripType)) {
+                                    // Проверяем наличие свободных слотов кулаков
+                                    const availableFists = window.gridManager.getAvailableFists();
+                                    if (availableFists.length === 0) return; // Блокировка
+                                    
+                                    const freeFist = availableFists[0];
+                                    
+                                    // Сначала находим и сохраняем элементы
+                                    const currentItemElement = this.findGridItemByName(leftHandItem.name, leftHandItem.index);
+                                    const newItemElement = this.findGridItemByName(item.name, item.index);
+                                    const fistElement = this.findGridItemByName('Кулаки', freeFist.fistId);
+                                    
+                                    // Обновляем состояния рук без автоматического обновления цветов
+                                    this.updateHandState('right', {
+                                        name: 'Кулаки',
+                                        index: freeFist.fistId
+                                    }, HAND_COLORS.RIGHT, false);
+                                    this.updateHandState('left', item, HAND_COLORS.LEFT, false);
+                                    
+                                    // Сбрасываем цвет текущего полуторного предмета
+                                    if (currentItemElement) {
+                                        window.gridManager.saveItemColor(leftHandItem.name, leftHandItem.index, '#666666');
+                                        currentItemElement.style.backgroundColor = '#666666';
+                                    }
+                                    
+                                    // Устанавливаем цвета для нового предмета и кулака
+                                    if (newItemElement) {
+                                        window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.LEFT);
+                                        newItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                                    }
+                                    if (fistElement) {
+                                        window.gridManager.saveItemColor('Кулаки', freeFist.fistId, HAND_COLORS.RIGHT);
+                                        fistElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Блок 2: Операции с предметами в обеих руках
+                // A. Предмет в обеих руках
+                if (leftHandItem && 
+                    rightHandItem && 
+                    leftHandItem.name === rightHandItem.name && 
+                    leftHandItem.index === rightHandItem.index) {
+                    
+                        if (item && 
+                            leftHandItem.name === item.name && 
+                            leftHandItem.index === item.index) {
+                            // Проверяем наличие свободных слотов кулаков
+                            if (availableFists.length === 0) return;
+
+                            const freeFist = availableFists[0];
+
+                            // 1. Сохраняем все элементы, которые будем красить
+                            const itemElement = this.findGridItemByName(item.name, item.index);
+                            const fistElement = this.findGridItemByName('Кулаки', freeFist.fistId);
+
+                            // 2. Обновляем состояния рук с отключенным автоматическим обновлением цветов
+                            this.updateHandState('left', item, HAND_COLORS.LEFT, false);
+                            this.updateHandState('right', {
+                                name: 'Кулаки',
+                                index: freeFist.fistId
+                            }, HAND_COLORS.RIGHT, false);
+
+                            // 3. Принудительно красим элементы
+                            if (itemElement) {
+                                window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.LEFT);
+                                itemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                            }
+                            if (fistElement) {
+                                window.gridManager.saveItemColor('Кулаки', freeFist.fistId, HAND_COLORS.RIGHT);
+                                fistElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                            }
+                            
+                            return;
+                    } else if (item) {
+                        // A2. Клик левой по другому предмету
+                        // Берём другой предмет в левую руку
+                        this.updateHandState('left', item, HAND_COLORS.LEFT);
+                        
+                        // Берём текущий предмет в правую руку
+                        this.updateHandState('right', leftHandItem, HAND_COLORS.RIGHT);
+                        return;
+                    }
+                }
+
+                // Блок 1: Базовые операции с одноручными предметами
+                // A. Операции освобождения руки
+                // А1: В левой(X) одноручный предмет, в правой(Y) кулаки
+                if (leftHandItem && 
+                    item && 
+                    leftHandItem.name === item.name && 
+                    leftHandItem.index === item.index && 
+                    rightHandItem?.name === 'Кулаки') {
+                    
+                    // Получаем все свободные кулаки, кроме того, что в правой руке
+                    const allFists = window.gridManager.fists.filter(fist => 
+                        fist.fistId !== rightHandItem.index && // Исключаем кулак из правой руки
+                        window.gridManager.grid[fist.position.y][fist.position.x] === null // Проверяем что слот свободен
+                    );
+                    
+                    // Если остался только кулак в правой руке
+                    if (allFists.length === 0) {
+                        // 1. Сбрасываем цвет старого предмета
+                        const leftItemElement = this.findGridItemByName(leftHandItem.name, leftHandItem.index);
+                        if (leftItemElement) {
+                            window.gridManager.saveItemColor(leftHandItem.name, leftHandItem.index, '#666666');
+                            leftItemElement.style.backgroundColor = '#666666';
+                        }
+                        
+                        // 2. Берём кулак из правой руки в обе руки
+                        const fistId = rightHandItem.index;
+                        const kулак = {
+                            name: 'Кулаки',
+                            index: fistId
+                        };
+                        
+                        // 3. Обновляем состояние рук
+                        this.updateHandState('left', kулак, HAND_COLORS.BOTH, false);
+                        this.updateHandState('right', kулак, HAND_COLORS.BOTH, false);
+                        
+                        // 4. Подсвечиваем кулак в инвентаре
+                        const fistElement = this.findGridItemByName('Кулаки', fistId);
+                        if (fistElement) {
+                            window.gridManager.saveItemColor('Кулаки', fistId, HAND_COLORS.BOTH);
+                            fistElement.style.backgroundColor = HAND_COLORS.BOTH;
+                        }
+                        
+                        return;
+                    }
+                    
+                    // Стандартный случай
+                    this.clearHand('left');
+                    return;
+                }
+
+                // А2: В обеих руках разные одноручные предметы
+                if (leftHandItem && 
+                    rightHandItem && 
+                    rightHandItem.name !== 'Кулаки' &&
+                    item && 
+                    leftHandItem.name === item.name && 
+                    leftHandItem.index === item.index) {
+                    
+                    // Проверяем наличие свободных слотов кулаков
+                    if (availableFists.length === 0) return; // Блокировка
+                    
+                    // Убираем предмет из левой руки, берём кулаки
+                    this.clearHand('left');
+                    return;
+                }
+
+                // B. Операции замены
+                // B1: Клик левой по предмету в правой руке (обмен)
+                if (rightHandItem && 
+                    item && 
+                    rightHandItem.name === item.name && 
+                    rightHandItem.index === item.index) {
+                    
+                    const rightItem = rightHandItem;
+                    const leftItem = leftHandItem;
+
+                    // Если в левой руке что-то есть - меняем местами
+                    if (leftItem) {
+                        // Обновляем состояния рук без сброса цветов
+                        this.updateHandState('right', leftItem, HAND_COLORS.RIGHT, false);
+                        this.updateHandState('left', rightItem, HAND_COLORS.LEFT, false);
+                        
+                        // Подсвечиваем предметы нужными цветами
+                        const rightItemElement = this.findGridItemByName(rightItem.name, rightItem.index);
+                        const leftItemElement = this.findGridItemByName(leftItem.name, leftItem.index);
+                        
+                        if (rightItemElement) {
+                            window.gridManager.saveItemColor(rightItem.name, rightItem.index, HAND_COLORS.LEFT);
+                            rightItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                        }
+                        if (leftItemElement) {
+                            window.gridManager.saveItemColor(leftItem.name, leftItem.index, HAND_COLORS.RIGHT);
+                            leftItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                        }
+                    } else {
+                        // Если левая пустая - просто перемещаем
+                        this.clearHand('right');
+                        this.updateHandState('left', rightItem, HAND_COLORS.LEFT);
+                    }
+                    return;
+                }
+
+                // B2: Клик по новому предмету (замена предмета в левой руке)
+                if (item && leftHandItem) {
+                    this.updateHandState('left', item, HAND_COLORS.LEFT);
+                    return;
+                }
+
+                // Стандартный случай: взятие предмета в пустую левую руку
+                if (item) {
+                    this.updateHandState('left', item, HAND_COLORS.LEFT);
+                }
+
+            }
+
+            handleRightClick(itemElement) {
+                // Получаем базовую информацию
+                const item = this.getItemFromElement(itemElement);
+                const rightHandItem = this.hands.right.item; // X рука
+                const leftHandItem = this.hands.left.item;   // Y рука
+                const availableFists = window.gridManager.getAvailableFists();
+
+                // Блок 3: Операции с полуторными предметами
+                // Проверяем есть ли полуторный предмет в левой руке (Y)
+                if (leftHandItem) {
+                    const leftItemInfo = this.getFullItemInfo(leftHandItem);
+                    if (leftItemInfo) {
+                        const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                        const leftGripType = GripManager.getGripType(leftItemInfo.weight, characterWeight);
+                        
+                        if (GripManager.isHandHalf(leftGripType) && item) {
+                            const newItemInfo = this.getFullItemInfo(item);
+                            if (newItemInfo) {
+                                const newGripType = GripManager.getGripType(newItemInfo.weight, characterWeight);
+                                
+                                if (GripManager.isHandHalf(newGripType)) {
+                                    // Сбрасываем цвет текущего полуторного
+                                    const currentItemElement = this.findGridItemByName(leftHandItem.name, leftHandItem.index);
+                                    if (currentItemElement) {
+                                        window.gridManager.saveItemColor(leftHandItem.name, leftHandItem.index, '#666666');
+                                        currentItemElement.style.backgroundColor = '#666666';
+                                    }
+                                    
+                                    // Если есть одноручный в правой руке - перемещаем его в левую
+                                    if (rightHandItem) {
+                                        if (rightHandItem.name === 'Кулаки') {
+                                            // Если в правой руке кулаки - перемещаем их в левую
+                                            this.updateHandState('left', {
+                                                name: 'Кулаки',
+                                                index: rightHandItem.index
+                                            }, HAND_COLORS.LEFT, false);
+                                        } else {
+                                            // Если в правой руке одноручный предмет
+                                            const rightItemInfo = this.getFullItemInfo(rightHandItem);
+                                            const rightGripType = GripManager.getGripType(rightItemInfo.weight, characterWeight);
+                                            
+                                            if (GripManager.isOneHanded(rightGripType)) {
+                                                this.updateHandState('left', rightHandItem, HAND_COLORS.LEFT, false);
+                                            }
+                                        }
+                                    } else {
+                                        // Если правая рука пуста, нужно взять свободный кулак
+                                        const availableFists = window.gridManager.getAvailableFists();
+                                        if (availableFists.length > 0) {
+                                            this.updateHandState('left', {
+                                                name: 'Кулаки',
+                                                index: availableFists[0].fistId
+                                            }, HAND_COLORS.LEFT, false);
+                                        }
+                                    }
+                                    
+                                    // Берём новый полуторный в правую руку
+                                    this.updateHandState('right', item, HAND_COLORS.RIGHT, false);
+                                    
+                                    // Обновляем цвета
+                                    const newItemElement = this.findGridItemByName(item.name, item.index);
+                                    if (newItemElement) {
+                                        window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.RIGHT);
+                                        newItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                                    }
+
+                                    // Обновляем цвета для левой руки
+                                    const leftItem = this.hands.left.item;
+                                    if (leftItem) {
+                                        const leftItemElement = this.findGridItemByName(leftItem.name, leftItem.index);
+                                        if (leftItemElement) {
+                                            window.gridManager.saveItemColor(leftItem.name, leftItem.index, HAND_COLORS.LEFT);
+                                            leftItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                                        }
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Полуторный в обеих руках
+                if (leftHandItem && 
+                    rightHandItem && 
+                    leftHandItem.name === rightHandItem.name && 
+                    leftHandItem.index === rightHandItem.index) {
+                    
+                    const itemInfo = this.getFullItemInfo(rightHandItem);
+                    if (itemInfo) {
+                        const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                        const gripType = GripManager.getGripType(itemInfo.weight, characterWeight);
+                        
+                        if (GripManager.isHandHalf(gripType) && item) {
+                            const newItemInfo = this.getFullItemInfo(item);
+                            if (newItemInfo) {
+                                const newGripType = GripManager.getGripType(newItemInfo.weight, characterWeight);
+                                
+                                // Клик правой по одноручному
+                                if (GripManager.isOneHanded(newGripType)) {
+                                    // Сначала находим и сохраняем элементы
+                                    const currentItemElement = this.findGridItemByName(rightHandItem.name, rightHandItem.index);
+                                    const newItemElement = this.findGridItemByName(item.name, item.index);
+                                    
+                                    // Обновляем состояния рук без автоматического обновления цветов
+                                    this.updateHandState('right', item, HAND_COLORS.RIGHT, false);
+                                    this.updateHandState('left', rightHandItem, HAND_COLORS.LEFT, false);
+                                    
+                                    // Принудительно обновляем цвета
+                                    if (currentItemElement) {
+                                        window.gridManager.saveItemColor(rightHandItem.name, rightHandItem.index, HAND_COLORS.LEFT);
+                                        currentItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                                    }
+                                    if (newItemElement) {
+                                        window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.RIGHT);
+                                        newItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                                    }
+                                    return;
+                                }
+                                
+                                // Клик правой по другому полуторному
+                                if (GripManager.isHandHalf(newGripType)) {
+                                    // Проверяем наличие свободных слотов кулаков
+                                    const availableFists = window.gridManager.getAvailableFists();
+                                    if (availableFists.length === 0) return; // Блокировка
+                                    
+                                    const freeFist = availableFists[0];
+                                    
+                                    // Сначала находим и сохраняем элементы
+                                    const currentItemElement = this.findGridItemByName(rightHandItem.name, rightHandItem.index);
+                                    const newItemElement = this.findGridItemByName(item.name, item.index);
+                                    const fistElement = this.findGridItemByName('Кулаки', freeFist.fistId);
+                                    
+                                    // Обновляем состояния рук без автоматического обновления цветов
+                                    this.updateHandState('left', {
+                                        name: 'Кулаки',
+                                        index: freeFist.fistId
+                                    }, HAND_COLORS.LEFT, false);
+                                    this.updateHandState('right', item, HAND_COLORS.RIGHT, false);
+                                    
+                                    // Сбрасываем цвет текущего полуторного предмета
+                                    if (currentItemElement) {
+                                        window.gridManager.saveItemColor(rightHandItem.name, rightHandItem.index, '#666666');
+                                        currentItemElement.style.backgroundColor = '#666666';
+                                    }
+                                    
+                                    // Устанавливаем цвета для нового предмета и кулака
+                                    if (newItemElement) {
+                                        window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.RIGHT);
+                                        newItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                                    }
+                                    if (fistElement) {
+                                        window.gridManager.saveItemColor('Кулаки', freeFist.fistId, HAND_COLORS.LEFT);
+                                        fistElement.style.backgroundColor = HAND_COLORS.LEFT;
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Блок 2: Операции с предметами в обеих руках
+                // Проверяем, держим ли мы предмет в обеих руках
+                if (rightHandItem && 
+                    leftHandItem && 
+                    rightHandItem.name === leftHandItem.name && 
+                    rightHandItem.index === leftHandItem.index) {
+
+                    // A1. Клик правой по текущему предмету в обеих руках
+                    if (item && 
+                        rightHandItem.name === item.name && 
+                        rightHandItem.index === item.index) {
+                        
+                        // Проверяем наличие свободных слотов кулаков
+                        if (availableFists.length === 0) return;
+
+                        const freeFist = availableFists[0];
+
+                        // 1. Сохраняем все элементы, которые будем красить
+                        const itemElement = this.findGridItemByName(item.name, item.index);
+                        const fistElement = this.findGridItemByName('Кулаки', freeFist.fistId);
+
+                        // 2. Обновляем состояния рук с отключенным автоматическим обновлением цветов
+                        this.updateHandState('right', item, HAND_COLORS.RIGHT, false);
+                        this.updateHandState('left', {
+                            name: 'Кулаки',
+                            index: freeFist.fistId
+                        }, HAND_COLORS.LEFT, false);
+
+                        // 3. Принудительно красим элементы
+                        if (itemElement) {
+                            window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.RIGHT);
+                            itemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                        }
+                        if (fistElement) {
+                            window.gridManager.saveItemColor('Кулаки', freeFist.fistId, HAND_COLORS.LEFT);
+                            fistElement.style.backgroundColor = HAND_COLORS.LEFT;
+                        }
+                        
+                        return;
+                    } 
+                    // A2. Клик правой по другому предмету
+                    else if (item) {
+                        // 1. Сохраняем ссылку на текущий предмет в руках
+                        const currentItem = rightHandItem;
+                        const currentItemElement = this.findGridItemByName(currentItem.name, currentItem.index);
+                        const newItemElement = this.findGridItemByName(item.name, item.index);
+
+                        // 2. Обновляем состояния рук с отключенным автоматическим обновлением цветов
+                        this.updateHandState('right', item, HAND_COLORS.RIGHT, false);
+                        this.updateHandState('left', currentItem, HAND_COLORS.LEFT, false);
+
+                        // 3. Принудительно красим элементы
+                        if (currentItemElement) {
+                            window.gridManager.saveItemColor(currentItem.name, currentItem.index, HAND_COLORS.LEFT);
+                            currentItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                        }
+                        if (newItemElement) {
+                            window.gridManager.saveItemColor(item.name, item.index, HAND_COLORS.RIGHT);
+                            newItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                        }
+                        
+                        return;
+                    }
+                }
+
+                // Блок 1: Базовые операции с одноручными предметами
+                // A. Операции освобождения руки
+                // A1: В правой(X) одноручный предмет, в левой(Y) кулаки
+                if (rightHandItem && 
+                    item && 
+                    rightHandItem.name === item.name && 
+                    rightHandItem.index === item.index && 
+                    leftHandItem?.name === 'Кулаки') {
+                    
+                    // Получаем все свободные кулаки, кроме того, что в левой руке
+                    const allFists = window.gridManager.fists.filter(fist => 
+                        fist.fistId !== leftHandItem.index && // Исключаем кулак из левой руки
+                        window.gridManager.grid[fist.position.y][fist.position.x] === null // Проверяем что слот свободен
+                    );
+                    
+                    // Если остался только кулак в левой руке
+                    if (allFists.length === 0) {
+                        // 1. Сбрасываем цвет старого предмета
+                        const rightItemElement = this.findGridItemByName(rightHandItem.name, rightHandItem.index);
+                        if (rightItemElement) {
+                            window.gridManager.saveItemColor(rightHandItem.name, rightHandItem.index, '#666666');
+                            rightItemElement.style.backgroundColor = '#666666';
+                        }
+                        
+                        // 2. Берём кулак из левой руки в обе руки
+                        const fistId = leftHandItem.index;
+                        const kулак = {
+                            name: 'Кулаки',
+                            index: fistId
+                        };
+                        
+                        // 3. Обновляем состояние рук
+                        this.updateHandState('left', kулак, HAND_COLORS.BOTH, false);
+                        this.updateHandState('right', kулак, HAND_COLORS.BOTH, false);
+                        
+                        // 4. Подсвечиваем кулак в инвентаре
+                        const fistElement = this.findGridItemByName('Кулаки', fistId);
+                        if (fistElement) {
+                            window.gridManager.saveItemColor('Кулаки', fistId, HAND_COLORS.BOTH);
+                            fistElement.style.backgroundColor = HAND_COLORS.BOTH;
+                        }
+                        
+                        return;
+                    }
+                    
+                    // Стандартный случай
+                    this.clearHand('right');
+                    return;
+                }
+
+                // A2: В обеих руках разные одноручные предметы
+                if (rightHandItem && 
+                    leftHandItem && 
+                    leftHandItem.name !== 'Кулаки' &&
+                    item && 
+                    rightHandItem.name === item.name && 
+                    rightHandItem.index === item.index) {
+                    
+                    // Проверяем наличие свободных слотов кулаков
+                    if (availableFists.length === 0) return; // Блокировка
+                    
+                    // Убираем предмет из правой руки, берём кулаки
+                    this.clearHand('right');
+                    return;
+                }
+
+                // B. Операции замены
+                // B1: Клик правой по предмету в левой руке (обмен)
+                if (leftHandItem && 
+                    item && 
+                    leftHandItem.name === item.name && 
+                    leftHandItem.index === item.index) {
+                    
+                    const leftItem = leftHandItem;
+                    const rightItem = rightHandItem;
+
+                    // Если в правой руке что-то есть - меняем местами
+                    if (rightItem) {
+                        // Обновляем состояния рук без сброса цветов
+                        this.updateHandState('left', rightItem, HAND_COLORS.LEFT, false);
+                        this.updateHandState('right', leftItem, HAND_COLORS.RIGHT, false);
+                        
+                        // Подсвечиваем предметы нужными цветами
+                        const leftItemElement = this.findGridItemByName(leftItem.name, leftItem.index);
+                        const rightItemElement = this.findGridItemByName(rightItem.name, rightItem.index);
+                        
+                        if (leftItemElement) {
+                            window.gridManager.saveItemColor(leftItem.name, leftItem.index, HAND_COLORS.RIGHT);
+                            leftItemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                        }
+                        if (rightItemElement) {
+                            window.gridManager.saveItemColor(rightItem.name, rightItem.index, HAND_COLORS.LEFT);
+                            rightItemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                        }
+                    } else {
+                        // Если правая пустая - просто перемещаем
+                        this.clearHand('left');
+                        this.updateHandState('right', leftItem, HAND_COLORS.RIGHT);
+                    }
+                    return;
+                }
+
+                // B2: Клик по новому предмету (замена предмета в правой руке)
+                if (item && rightHandItem) {
+                    this.updateHandState('right', item, HAND_COLORS.RIGHT);
+                    return;
+                }
+                
+
+                // Стандартный случай: взятие предмета в пустую правую руку
+                if (item) {
+                    this.updateHandState('right', item, HAND_COLORS.RIGHT);
+                }
+
+
+            }
+
+            handleBothClick(itemElement) {
+                // Получаем базовую информацию
+                const item = this.getItemFromElement(itemElement);
+                const leftHandItem = this.hands.left.item;
+                const rightHandItem = this.hands.right.item;
+                const availableFists = window.gridManager.getAvailableFists();
+
+
+                // Блок 2: Операции с предметами в обеих руках
+                // B. Блокируем повторный клик по кулакам, которые держим в обеих руках
+                if (item?.name === 'Кулаки' && 
+                    leftHandItem?.name === 'Кулаки' && 
+                    rightHandItem?.name === 'Кулаки' && 
+                    leftHandItem.index === rightHandItem.index && 
+                    leftHandItem.index === item.index) {
+                    return;
+                }
+
+                // A: Операции с предметом в обеих руках
+                // Проверяем, держим ли мы предмет в обеих руках
+                if (leftHandItem && 
+                    rightHandItem && 
+                    leftHandItem.name === rightHandItem.name && 
+                    leftHandItem.index === rightHandItem.index) {
+                    
+                    // A1. СКМ по текущему предмету в руках → убрать предмет, взять кулаки
+                    if (item && 
+                        leftHandItem.name === item.name && 
+                        leftHandItem.index === item.index) {
+                        
+                        // Проверяем наличие свободных слотов кулаков
+                        if (availableFists.length === 0) return;
+                        
+                        const freeFist = availableFists[0];
+                        
+                        // Сбрасываем цвет текущего предмета
+                        const currentItemElement = this.findGridItemByName(item.name, item.index);
+                        if (currentItemElement) {
+                            window.gridManager.saveItemColor(item.name, item.index, '#666666');
+                            currentItemElement.style.backgroundColor = '#666666';
+                        }
+                        
+                        // Берём кулаки в обе руки
+                        const kулак = {
+                            name: 'Кулаки',
+                            index: freeFist.fistId
+                        };
+                        
+                        // Обновляем состояние рук без автоматического обновления цветов
+                        this.updateHandState('left', kулак, HAND_COLORS.BOTH, false);
+                        this.updateHandState('right', kулак, HAND_COLORS.BOTH, false);
+                        
+                        // Подсвечиваем кулак в инвентаре
+                        const fistElement = this.findGridItemByName('Кулаки', freeFist.fistId);
+                        if (fistElement) {
+                            window.gridManager.saveItemColor('Кулаки', freeFist.fistId, HAND_COLORS.BOTH);
+                            fistElement.style.backgroundColor = HAND_COLORS.BOTH;
+                        }
+                        
+                        return;
+                    }
+                }
+
+                // С: Общие правила - СКМ по новому предмету
+                if (item) {
+                    // Проверяем тип хвата для нового предмета
+                    const fullItem = this.getFullItemInfo(item);
+                    if (fullItem) {
+                        const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                        const gripType = GripManager.getGripType(fullItem.weight, characterWeight);
+                        
+                        // Блокируем взятие если предмет нельзя поднять
+                        if (!GripManager.canBePickedUp(gripType)) {
+                            return;
+                        }
+                    }
+
+                    // Очищаем предыдущие предметы из рук
+                    if (leftHandItem && rightHandItem) {
+                        // Если был предмет в обеих руках
+                        if (leftHandItem.name === rightHandItem.name && 
+                            leftHandItem.index === rightHandItem.index) {
+                            const prevItem = this.findGridItemByName(leftHandItem.name, leftHandItem.index);
+                            if (prevItem) {
+                                window.gridManager.saveItemColor(leftHandItem.name, leftHandItem.index, '#666666');
+                                prevItem.style.backgroundColor = '#666666';
+                            }
+                        } else {
+                            // Если были разные предметы в руках
+                            ['left', 'right'].forEach(hand => {
+                                const handItem = this.hands[hand].item;
+                                const prevItem = this.findGridItemByName(handItem.name, handItem.index);
+                                if (prevItem) {
+                                    window.gridManager.saveItemColor(handItem.name, handItem.index, '#666666');
+                                    prevItem.style.backgroundColor = '#666666';
+                                }
+                            });
+                        }
+                    }
+
+                    // Берём новый предмет в обе руки
+                    this.updateHandState('left', item, HAND_COLORS.BOTH);
+                    this.updateHandState('right', item, HAND_COLORS.BOTH);
+                }
+            }
+
+            isFistAvailable() {
+                return window.gridManager.fists.some(fist => 
+                    !this.isFistInHands(fist.fistId) && 
+                    window.gridManager.grid[fist.position.y][fist.position.x] === null
+                );
+            }
+
+            getFullItemInfo(item) {
+                if (!item || item.name === 'Кулаки') return null;
+                
+                // Ищем предмет в размещенных предметах
+                for (const [itemId, placements] of window.gridManager.placedItems) {
+                    const placement = placements.find(p => 
+                        p.item.name === item.name && 
+                        p.index === item.index
+                    );
+                    if (placement) {
+                        return placement.item;
+                    }
+                }
+                return null;
+            }
+
+            // Метод для полной очистки руки
+            clearHand(handType, resetOtherHighlights = true) {
+                const hand = this.hands[handType];
+                if (!hand) return false;
+
+                // Если в руке кулаки - запрещаем очистку
+                if (hand.item?.name === 'Кулаки') {
+                    return false;
+                }
+
+                // Если был предмет в руке
+                if (hand.item) {
+                    const prevItem = this.findGridItemByName(hand.item.name, hand.item.index);
+                    if (prevItem && resetOtherHighlights) {
+                        const otherHandType = handType === 'left' ? 'right' : 'left';
+                        const otherHand = this.hands[otherHandType];
+                        
+                        if (!otherHand.item || 
+                            `${otherHand.item.name}_${otherHand.item.index}` !== 
+                            `${hand.item.name}_${hand.item.index}`) {
+                            window.gridManager.saveItemColor(hand.item.name, hand.item.index, '#666666');
+                            prevItem.style.backgroundColor = '#666666';
+                        }
+                    }
+
+                    // Ищем свободный кулак
+                    const freeFist = window.gridManager.findNearestFreeFist(
+                        new Position(0, 0), 
+                        1, 
+                        1
+                    );
+
+                    // Проверяем особый случай с единственным свободным кулаком
+                    const availableFists = window.gridManager.getAvailableFists();
+                    const otherHandType = handType === 'left' ? 'right' : 'left';
+                    const otherHand = this.hands[otherHandType];
+
+                    if (availableFists.length === 1 && 
+                        otherHand.item?.name === 'Кулаки' && 
+                        otherHand.item.index === availableFists[0].fistId) {
+                        // Берём единственный кулак в обе руки
+                        this.handleBothClick({
+                            querySelector: () => ({
+                                textContent: `Кулаки_${availableFists[0].fistId}`
+                            })
+                        });
+                        return true;
+                    }
+
+                    if (freeFist) {
+                        // Берем свободный кулак в руку
+                        hand.item = {
+                            name: 'Кулаки',
+                            index: freeFist.fistId
+                        };
+                        hand.isEmpty = false;
+                        hand.color = HAND_COLORS[handType.toUpperCase()];
+
+                        const fistElement = this.findGridItemByName('Кулаки', freeFist.fistId);
+                        if (fistElement) {
+                            window.gridManager.saveItemColor('Кулаки', freeFist.fistId, hand.color);
+                            fistElement.style.backgroundColor = hand.color;
+                        }
+                    } else {
+                        // Если свободных кулаков нет - оставляем текущий предмет
+                        return false;
+                    }
+
+                    this.renderHand(handType);
+                    return true;
+                }
+                return false;
+            }
+
+            updateHandsAfterItemPlacement(affectedFists) {
+                if (this.hands.left.item?.name === 'Кулаки' &&
+                    affectedFists.some(f => f.fistId === this.hands.left.item.index)) {
+                    this.clearHand('left');
+                }
+                
+                if (this.hands.right.item?.name === 'Кулаки' &&
+                    affectedFists.some(f => f.fistId === this.hands.right.item.index)) {
+                    this.clearHand('right');
+                }
+            }
+
+            checkItemRemoval(name, index) {
+                // Проверяем левую руку
+                if (this.hands.left.item && 
+                    this.hands.left.item.name === name && 
+                    this.hands.left.item.index === index) {
+                    this.clearHand('left', false); // false означает не сбрасывать подсветку других предметов
+                }
+                
+                // Проверяем правую руку
+                if (this.hands.right.item && 
+                    this.hands.right.item.name === name && 
+                    this.hands.right.item.index === index) {
+                    this.clearHand('right', false);
+                }
+            }
+
+            // Вспомогательный метод получения предмета из элемента DOM
+            getItemFromElement(element) {
+                if (!element || !element.querySelector('.item-label')) {
+                    return null; // Возвращаем null для кулаков
+                }
+                
+                const itemLabel = element.querySelector('.item-label').textContent;
+                const [name, indexStr] = itemLabel.split('_');
+                return {
+                    name: name,
+                    index: parseInt(indexStr, 10) // Убедимся что индекс преобразуется в число
+                };
+            }
+
+            // Вспомогательные методы для обновления состояния рук
+            updateHandState(handType, item, color = null, resetPrevious = true) {
+                const hand = this.hands[handType];
+                if (!hand) return false;
+
+                // Если был предыдущий предмет и нужно сбросить его цвет
+                if (hand.item && resetPrevious) {
+                    const prevItem = this.findGridItemByName(hand.item.name, hand.item.index);
+                    if (prevItem) {
+                        window.gridManager.saveItemColor(hand.item.name, hand.item.index, '#666666');
+                        prevItem.style.backgroundColor = '#666666';
+                    }
+                }
+
+                hand.item = item;
+                hand.isEmpty = !item;
+                hand.color = color || HAND_COLORS.DEFAULT;
+                
+                // Подсвечиваем новый предмет, если он есть
+                if (item) {
+                    const gridItem = this.findGridItemByName(item.name, item.index);
+                    if (gridItem) {
+                        window.gridManager.saveItemColor(item.name, item.index, color);
+                        gridItem.style.backgroundColor = color;
+                    }
+                }
+
+                this.renderHand(handType);
+                return true;
+            }
+
+            // Вспомогательный метод для поиска элемента предмета в сетке
+            findGridItemByName(name, index) {
+                const items = document.querySelectorAll('.grid-item');
+                return Array.from(items).find(item => {
+                    const label = item.querySelector('.item-label').textContent;
+                    return label === `${name}_${index}`;
+                });
+            }
+
+            renderHand(handType) {
+                const slot = this.slots.get(handType);
+                if (!slot) return;
+
+                const hand = this.hands[handType];
+                
+                // Обновляем цвет слота
+                slot.element.style.backgroundColor = hand.color;
+                
+                // Очищаем содержимое слота
+                slot.element.innerHTML = '';
+                
+                // Если есть предмет, отображаем его
+                if (hand.item) {
+                    const itemElement = this.createItemElement(hand.item);
+                    slot.element.appendChild(itemElement);
+                }
+            }
+
+            createItemElement(item) {
+                const element = document.createElement('div');
+                element.className = 'grid-item hand-item';
+                
+                const label = document.createElement('div');
+                label.className = 'item-label';
+                // Добавляем индекс к отображаемому имени
+                label.textContent = `${item.name}_${item.index}`;
+                
+                element.appendChild(label);
+                return element;
+            }
+
+            // Вспомогательные методы проверки состояния
+            isHandEmpty(handType) {
+                return this.hands[handType].isEmpty;
+            }
+
+            getItemInHand(handType) {
+                return this.hands[handType].item;
+            }
+
+            areHandsEmpty() {
+                return this.isHandEmpty('left') && this.isHandEmpty('right');
+            }
+
+            hasItemInBothHands(item) {
+                return this.hands.left.item && 
+                    this.hands.right.item && 
+                    this.hands.left.item.name === item.name && 
+                    this.hands.left.item.index === item.index && 
+                    this.hands.right.item.name === item.name && 
+                    this.hands.right.item.index === item.index;
+            }
+        }
+
+        // Класс управления сеткой
+        class GridManager {
+            constructor(container, rows, cols) {
+                this.container = container;
+                this.rows = rows;
+                this.cols = cols;
+                this.grid = Array(rows).fill(null).map(() => Array(cols).fill(null));
+                this.placedItems = new Map();
+                this.itemColors = new Map();
+                this.usedIndices = new Set();
+                this.fists = []; // Массив для хранения всех кулаков
+                this.initializeFists(); // Инициализация кулаков
+                this.renderGrid();
+            }
+
+            initializeFists() {
+                let fistIndex = 0;
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        const fist = new InventoryItem('Кулаки', '1;1', 0);
+                        fist.position = new Position(x, y);
+                        fist.fistId = fistIndex++; // Уникальный ID для кулаков
+                        this.fists.push(fist);
+                    }
+                }
+            }
+
+            getAvailableFists() {
+                return this.fists.filter(fist => 
+                    !this.isFistInHands(fist.fistId) && 
+                    this.grid[fist.position.y][fist.position.x] === null
+                );
+            }
+
+            areAllSlotsOccupied() {
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        if (this.grid[y][x] === null) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            saveItemColor(itemName, index, color) {
+                this.itemColors.set(`${itemName}_${index}`, color);
+            }
+
+            getItemColor(itemName, index) {
+                return this.itemColors.get(`${itemName}_${index}`) || '#666666';
+            }
+
+            getNextAvailableIndex() {
+                let index = 0;
+                while (this.usedIndices.has(index)) {
+                    index++;
+                }
+                return index;
+            }
+
+            canPlaceItem(item) {
+                return this.findAvailablePosition(item) !== null;
+            }
+
+            findAvailablePosition(item) {
+                for (let y = 0; y <= this.rows - item.size.height; y++) {
+                    for (let x = 0; x <= this.cols - item.size.width; x++) {
+                        if (this.isAreaEmpty(x, y, item.size.width, item.size.height)) {
+                            return new Position(x, y);
+                        }
+                    }
+                }
+                return null;
+            }
+
+            isAreaEmpty(startX, startY, width, height) {
+                for (let y = startY; y < startY + height; y++) {
+                    for (let x = startX; x < startX + width; x++) {
+                        if (this.grid[y][x] !== null) return false;
+                    }
+                }
+                return true;
+            }
+            
+            placeItem(item, position) {
+                const placements = this.placedItems.get(item.id) || [];
+                const index = this.getNextAvailableIndex();
+
+                // Получаем затронутые кулаки
+                const affectedFists = this.getAffectedFists(position, item.size.width, item.size.height);
+                
+                if (window.handsManager) {
+                    const handsManager = window.handsManager;
+                    const leftHand = handsManager.hands.left;
+                    const rightHand = handsManager.hands.right;
+                    
+                    // Получаем кулаки, которые сейчас в руках
+                    const heldFists = affectedFists.filter(fist => this.isFistInHands(fist.fistId));
+                    
+                    // Проверяем, сколько слотов останется после размещения предмета
+                    const remainingFists = this.fists.filter(fist => 
+                        !affectedFists.some(af => af.fistId === fist.fistId) && 
+                        this.grid[fist.position.y][fist.position.x] === null
+                    );
+
+                    // Случай 1: Остаётся только один слот и мы держим разные кулаки
+                    if (remainingFists.length === 1 && 
+                        leftHand.item?.name === 'Кулаки' && 
+                        rightHand.item?.name === 'Кулаки' && 
+                        leftHand.item?.index !== rightHand.item?.index) {
+                        // Берём последний кулак двумя руками
+                        handsManager.handleBothClick({
+                            querySelector: () => ({
+                                textContent: `Кулаки_${remainingFists[0].fistId}`
+                            })
+                        });
+                    }
+                    // Случай 2: Не остаётся слотов вообще
+                    else if (remainingFists.length === 0) {
+                        if (leftHand.item?.name === 'Кулаки' && rightHand.item?.name === 'Кулаки') {
+                            // Берём предмет двумя руками
+                            setTimeout(() => {
+                                handsManager.handleBothClick({
+                                    querySelector: () => ({
+                                        textContent: `${item.name}_${index}`
+                                    })
+                                });
+                                const itemElement = this.findGridItemByName(item.name, index);
+                                if (itemElement) {
+                                    this.saveItemColor(item.name, index, HAND_COLORS.BOTH);
+                                    itemElement.style.backgroundColor = HAND_COLORS.BOTH;
+                                }
+                            }, 0);
+                        } else if (leftHand.item?.name === 'Кулаки') {
+                            // Берём предмет левой рукой
+                            setTimeout(() => {
+                                handsManager.handleLeftClick({
+                                    querySelector: () => ({
+                                        textContent: `${item.name}_${index}`
+                                    })
+                                });
+                                const itemElement = this.findGridItemByName(item.name, index);
+                                if (itemElement) {
+                                    this.saveItemColor(item.name, index, HAND_COLORS.LEFT);
+                                    itemElement.style.backgroundColor = HAND_COLORS.LEFT;
+                                }
+                            }, 0);
+                        } else if (rightHand.item?.name === 'Кулаки') {
+                            // Берём предмет правой рукой
+                            setTimeout(() => {
+                                handsManager.handleRightClick({
+                                    querySelector: () => ({
+                                        textContent: `${item.name}_${index}`
+                                    })
+                                });
+                                const itemElement = this.findGridItemByName(item.name, index);
+                                if (itemElement) {
+                                    this.saveItemColor(item.name, index, HAND_COLORS.RIGHT);
+                                    itemElement.style.backgroundColor = HAND_COLORS.RIGHT;
+                                }
+                            }, 0);
+                        }
+                    }
+                    // Случай 3: Перекрытие одного или двух кулаков
+                    else if (heldFists.length > 0) {
+                        const isHoldingBothHands = leftHand.item?.index === rightHand.item?.index;
+                        
+                        if (isHoldingBothHands) {
+                            // Если держим кулак двумя руками (СКМ)
+                            // Сохраняем существующую логику
+                            const nextFist = remainingFists.find(f => 
+                                !this.isFistInHands(f.fistId) && 
+                                f.fistId > leftHand.item.index
+                            ) || remainingFists[0];
+
+                            if (nextFist) {
+                                handsManager.handleBothClick({
+                                    querySelector: () => ({
+                                        textContent: `Кулаки_${nextFist.fistId}`
+                                    })
+                                });
+                            }
+                        } else {
+                            // Если держим разные кулаки разными руками
+                            if (heldFists.length === 1) {
+                                // Перекрыт один кулак
+                                const affectedHand = leftHand.item && heldFists.some(f => f.fistId === leftHand.item.index) 
+                                    ? 'left' 
+                                    : 'right';
+                                
+                                // Находим следующий свободный кулак с большим ID
+                                const currentFistId = handsManager.hands[affectedHand].item.index;
+                                const nextFist = remainingFists.find(f => 
+                                    !this.isFistInHands(f.fistId) && 
+                                    f.fistId > currentFistId
+                                ) || remainingFists[0];
+
+                                if (nextFist) {
+                                    if (affectedHand === 'left') {
+                                        handsManager.handleLeftClick({
+                                            querySelector: () => ({
+                                                textContent: `Кулаки_${nextFist.fistId}`
+                                            })
+                                        });
+                                    } else {
+                                        handsManager.handleRightClick({
+                                            querySelector: () => ({
+                                                textContent: `Кулаки_${nextFist.fistId}`
+                                            })
+                                        });
+                                    }
+                                }
+                            } else if (heldFists.length === 2) {
+                                // Перекрыты оба кулака
+                                // Находим два следующих свободных кулака
+                                const sortedFists = remainingFists
+                                    .filter(f => !this.isFistInHands(f.fistId))
+                                    .sort((a, b) => a.fistId - b.fistId);
+
+                                if (sortedFists.length >= 2) {
+                                    // Берём два следующих кулака
+                                    handsManager.handleLeftClick({
+                                        querySelector: () => ({
+                                            textContent: `Кулаки_${sortedFists[0].fistId}`
+                                        })
+                                    });
+                                    handsManager.handleRightClick({
+                                        querySelector: () => ({
+                                            textContent: `Кулаки_${sortedFists[1].fistId}`
+                                        })
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Размещаем предмет в сетке
+                placements.push({
+                    position,
+                    item,
+                    index
+                });
+                
+                this.placedItems.set(item.id, placements);
+                this.usedIndices.add(index);
+
+                // Обновляем состояние сетки
+                for (let y = position.y; y < position.y + item.size.height; y++) {
+                    for (let x = position.x; x < position.x + item.size.width; x++) {
+                        this.grid[y][x] = item.id;
+                    }
+                }
+
+                this.renderGrid();
+                return true;
+            }
+
+            getAffectedFists(position, width, height) {
+                const affectedFists = [];
+                
+                // Проходим по всей области, которую займет предмет
+                for (let y = position.y; y < position.y + height; y++) {
+                    for (let x = position.x; x < position.x + width; x++) {
+                        // Ищем кулак в текущей позиции
+                        const fist = this.fists.find(f => 
+                            f.position.x === x && 
+                            f.position.y === y
+                        );
+                        
+                        if (fist) {
+                            affectedFists.push(fist);
+                        }
+                    }
+                }
+                
+                return affectedFists;
+            }
+
+            isFistInHands(fistId) {
+                if (!window.handsManager) return false;
+                const {left, right} = window.handsManager.hands;
+                
+                return (left.item?.name === 'Кулаки' && left.item?.index === fistId) ||
+                    (right.item?.name === 'Кулаки' && right.item?.index === fistId);
+            }
+
+            findNearestFreeFist(position, itemWidth, itemHeight) {
+                // Создаем множество позиций, которые будут заняты предметом
+                const occupiedPositions = new Set();
+                for (let y = position.y; y < position.y + itemHeight; y++) {
+                    for (let x = position.x; x < position.x + itemWidth; x++) {
+                        occupiedPositions.add(`${x},${y}`);
+                    }
+                }
+
+                // Ищем первый доступный кулак по возрастанию индекса, который не попадает в занимаемую область
+                return this.fists.find(fist => 
+                    !occupiedPositions.has(`${fist.position.x},${fist.position.y}`) &&
+                    this.grid[fist.position.y][fist.position.x] === null && 
+                    !this.isFistInHands(fist.fistId)
+                );
+            }
+                        
+            getFistAtPosition(position) {
+                return this.fists.find(fist => 
+                    fist.position.x === position.x && 
+                    fist.position.y === position.y
+                );
+            }
+
+            isItemInHands(item) {
+                return window.handsManager && (
+                    (window.handsManager.hands.left.item && 
+                    window.handsManager.hands.left.item.name === item.name && 
+                    window.handsManager.hands.left.item.index === item.fistId) ||
+                    (window.handsManager.hands.right.item && 
+                    window.handsManager.hands.right.item.name === item.name && 
+                    window.handsManager.hands.right.item.index === item.fistId)
+                );
+            }
+
+            removeLastPlacedItem(item) {
+                const placements = this.placedItems.get(item.id);
+                if (placements && placements.length > 0) {
+                    const lastPlacement = placements[placements.length - 1];
+                    const {position, index} = lastPlacement;
+
+                    // Проверяем состояние сетки до удаления
+                    const wasFullBeforeRemoval = this.areAllSlotsOccupied();
+
+                    this.usedIndices.delete(index);
+
+                    for (let y = position.y; y < position.y + item.size.height; y++) {
+                        for (let x = position.x; x < position.x + item.size.width; x++) {
+                            this.grid[y][x] = null;
+                        }
+                    }
+
+                    // Удаляем последний placement
+                    placements.pop();
+                    
+                    // Удаляем цвет предмета из сохраненных
+                    this.itemColors.delete(`${item.name}_${index}`);
+
+                    if (placements.length === 0) {
+                        this.placedItems.delete(item.id);
+                    }
+
+                    // Находим появившиеся кулаки после удаления предмета
+                    const newFists = this.getNewlyAvailableFists(position, item.size);
+
+                    this.renderGrid();
+                    return {
+                        success: true,
+                        index: index,
+                        item: {
+                            name: item.name,
+                            index: index
+                        },
+                        wasFullBeforeRemoval,
+                        newFists
+                    };
+                }
+                return {success: false};
+            }
+
+            getNewlyAvailableFists(position, size) {
+                // Сначала проверяем верхний левый угол удаленного предмета
+                const topLeftFist = this.getFistAtPosition(position);
+                if (topLeftFist) {
+                    return [topLeftFist];
+                }
+
+                // Если в верхнем левом углу нет кулака, ищем первый доступный кулак в области
+                const newFists = [];
+                for (let y = position.y; y < position.y + size.height; y++) {
+                    for (let x = position.x; x < position.x + size.width; x++) {
+                        const fist = this.getFistAtPosition(new Position(x, y));
+                        if (fist) {
+                            newFists.push(fist);
+                            return newFists; // Возвращаем сразу первый найденный кулак
+                        }
+                    }
+                }
+                return newFists;
+            }
+
+            checkAndClearHandsForItem(itemName, itemIndex) {
+                ['left', 'right'].forEach(handType => {
+                    const hand = this.hands[handType];
+                    if (hand.item && 
+                        hand.item.name === itemName && 
+                        hand.item.index === itemIndex) {
+                        this.clearHand(handType, false);
+                    }
+                });
+            }
+
+            renderGrid() {
+                this.container.style.gridTemplateColumns = `repeat(${this.cols}, ${GRID_CELL_SIZE}px)`;
+                this.container.style.gridTemplateRows = `repeat(${this.rows}, ${GRID_CELL_SIZE}px)`;
+                this.container.innerHTML = '';
+
+                // Создаем пустые ячейки
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'grid-cell';
+                        if (this.grid[y][x] !== null) {
+                            cell.classList.add('occupied');
+                        }
+                        this.container.appendChild(cell);
+                    }
+                }
+
+                // Отображаем размещенные предметы
+                this.placedItems.forEach((placements, itemId) => {
+                    placements.forEach(({position, item, index}) => {
+                        const itemElement = document.createElement('div');
+                        itemElement.className = 'grid-item';
+                        
+                        const displaySize = item.getDisplaySize();
+                        itemElement.style.width = `${displaySize.width}px`;
+                        itemElement.style.height = `${displaySize.height}px`;
+                        itemElement.style.left = `${position.x * (GRID_CELL_SIZE + GRID_GAP)}px`;
+                        itemElement.style.top = `${position.y * (GRID_CELL_SIZE + GRID_GAP)}px`;
+
+                        // Восстанавливаем сохраненный цвет
+                        const savedColor = this.getItemColor(item.name, index);
+                        itemElement.style.backgroundColor = savedColor;
+
+                        // Создаем контейнер для лейблов
+                        const labelContainer = document.createElement('div');
+                        labelContainer.className = 'item-label-container';
+
+                        // Основной лейбл
+                        const label = document.createElement('div');
+                        label.className = 'item-label';
+                        label.textContent = `${item.name}_${index}`;
+
+                        // Лейбл хвата
+                        const gripLabel = document.createElement('div');
+                        gripLabel.className = 'grip-label';
+                        const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                        const gripType = GripManager.getGripType(item.weight, characterWeight);
+                        gripLabel.textContent = GRIP_LABELS[gripType].toLowerCase();
+
+                        // Собираем структуру
+                        labelContainer.appendChild(label);
+                        labelContainer.appendChild(gripLabel);
+                        itemElement.appendChild(labelContainer);
+                        
+                        this.container.appendChild(itemElement);
+                    });
+                });
+
+                // Отображение кулаков в пустых ячейках
+                this.fists.forEach(fist => {
+                    const {x, y} = fist.position;
+                    if (this.grid[y][x] === null) { // Если ячейка пуста
+                        const fistElement = document.createElement('div');
+                        fistElement.className = 'grid-item fist-item';
+                        fistElement.style.width = `${GRID_CELL_SIZE}px`;
+                        fistElement.style.height = `${GRID_CELL_SIZE}px`;
+                        fistElement.style.left = `${x * (GRID_CELL_SIZE + GRID_GAP)}px`;
+                        fistElement.style.top = `${y * (GRID_CELL_SIZE + GRID_GAP)}px`;
+                        
+                        const label = document.createElement('div');
+                        label.className = 'item-label';
+                        label.textContent = `Кулаки_${fist.fistId}`;
+                        fistElement.appendChild(label);
+
+                        // Восстанавливаем сохраненный цвет для кулаков
+                        const savedColor = this.getItemColor('Кулаки', fist.fistId);
+                        fistElement.style.backgroundColor = savedColor || '#666666';
+                        
+                        this.container.appendChild(fistElement);
+                    }
+                });
+            }
+        }
+
+        class LoadManager {
+            constructor() {
+                this.currentLoad = 0;
+                this.isOverloaded = false; // Новый флаг
+                this.updateUI();
+            }
+
+            calculateMaxLoad(wt) {
+                return (wt + 1) * 3;
+            }
+
+            getLoadThresholds(maxLoad) {
+                return {
+                    light: {
+                        min: 0,
+                        max: Math.floor(maxLoad * 0.25)
+                    },
+                    medium: {
+                        min: Math.floor(maxLoad * 0.25) + 1,
+                        max: Math.floor(maxLoad * 0.50)
+                    },
+                    heavy: {
+                        min: Math.floor(maxLoad * 0.50) + 1,
+                        max: Math.floor(maxLoad * 0.75)
+                    },
+                    critical: {
+                        min: Math.floor(maxLoad * 0.75) + 1,
+                        max: maxLoad
+                    },
+                    overload: {
+                        min: maxLoad + 1
+                    }
+                };
+            }
+
+            updateLoad(items) {
+                this.currentLoad = items.reduce((sum, item) => sum + item.weight, 0);
+                this.updateUI();
+                return this.currentLoad;
+            }
+
+            updateUI() {
+                const wt = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                const maxLoad = this.calculateMaxLoad(wt);
+                const thresholds = this.getLoadThresholds(maxLoad);
+                
+                // Проверяем переход в состояние перегруза и выход из него
+                if (this.currentLoad > maxLoad) {
+                    this.isOverloaded = true;
+                } else {
+                    // Сбрасываем флаг если вышли из перегруза
+                    this.isOverloaded = false;
+                }
+                
+                const loadBlock = document.querySelector('.load-block');
+                if (!loadBlock) return;
+
+                // Обновляем формулу и значения нагрузки
+                const currentLoadElement = loadBlock.querySelector('.current-load');
+                const maxLoadElement = loadBlock.querySelector('.max-load');
+                
+                currentLoadElement.textContent = this.currentLoad;
+                maxLoadElement.textContent = maxLoad;
+
+                // Обновляем статусы нагрузки
+                const loadStates = loadBlock.querySelectorAll('.load-state');
+                loadStates.forEach(state => {
+                    const type = state.dataset.type;
+                    const loadInfo = thresholds[type];
+                    
+                    state.classList.remove('active');
+                    
+                    if (type === 'overload') {
+                        state.textContent = `${state.dataset.name} (≥${loadInfo.min})`;
+                        if (this.currentLoad >= loadInfo.min) {
+                            state.classList.add('active');
+                        }
+                    } else {
+                        state.textContent = `${state.dataset.name} (${loadInfo.min}-${loadInfo.max})`;
+                        if (this.currentLoad >= loadInfo.min && this.currentLoad <= loadInfo.max) {
+                            state.classList.add('active');
+                        }
+                    }
+                });
+
+                // Возвращаем состояние перегруза
+                return this.currentLoad > maxLoad;
+                return this.isOverloaded;
+            }
+        }
+
+        // Класс управления панелью предметов
+        class ItemPanel {
+            constructor(container, gridManager) {
+                this.container = container;
+                this.gridManager = gridManager;
+                this.items = new Map();
+                this.loadManager = new LoadManager();
+                this.init();
+            }
+
+            createItemControl(name, sz, wt) {
+                // Создаем предмет с размерами
+                const sizeStr = sz.replace('[', '').replace(']', ''); // Убираем скобки для парсинга
+                const item = new InventoryItem(name, sizeStr, wt);
+                const control = document.createElement('div');
+                control.className = 'item-control';
+
+                const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                const gripType = GripManager.getGripType(wt, characterWeight);
+                
+                // Отображаем размеры в формате SZ [width; height]
+                control.innerHTML = `
+                    <div class="item-info">
+                        <span>${name}</span>
+                        <span class="item-stats">
+                            SZ [${sizeStr}] WT: ${wt} | ${GRIP_LABELS[gripType]}
+                        </span>
+                    </div>
+                    <div class="item-counter">
+                        <button class="decrease" disabled>-</button>
+                        <span class="count">0</span>
+                        <button class="increase">+</button>
+                    </div>
+                `;
+
+                this.items.set(item.id, {
+                    count: 0,
+                    item: item,
+                    control: control
+                });
+
+                this.setupControlHandlers(control, item);
+                return control;
+            }
+
+            setupControlHandlers(control, item) {
+                const decrease = control.querySelector('.decrease');
+                const increase = control.querySelector('.increase');
+                const countDisplay = control.querySelector('.count');
+
+                decrease.addEventListener('click', () => {
+                    const itemData = this.items.get(item.id);
+                    if (itemData && itemData.count > 0) {
+                        const result = this.gridManager.removeLastPlacedItem(item);
+                        if (result.success) {
+                            const removedIndex = result.index;
+                            
+                            if (window.handsManager) {
+                                // Проверяем состояние рук перед удалением
+                                const wasInBothHands = window.handsManager.hasItemInBothHands({
+                                    name: item.name,
+                                    index: removedIndex
+                                });
+                                
+                                const leftHand = window.handsManager.hands.left;
+                                const rightHand = window.handsManager.hands.right;
+                                const wasInLeftHand = !wasInBothHands && 
+                                    leftHand.item?.name === item.name && 
+                                    leftHand.item?.index === removedIndex;
+                                const wasInRightHand = !wasInBothHands && 
+                                    rightHand.item?.name === item.name && 
+                                    rightHand.item?.index === removedIndex;
+
+                                // Получаем кулак в позиции удаленного предмета
+                                const newFist = result.newFists[0];
+                                
+                                if (newFist) {
+                                    if (wasInBothHands) {
+                                        // Если предмет был в обеих руках, берем кулак двумя руками
+                                        window.handsManager.handleBothClick({
+                                            querySelector: () => ({
+                                                textContent: `Кулаки_${newFist.fistId}`
+                                            })
+                                        });
+                                    } else if (wasInLeftHand) {
+                                        // Если предмет был в левой руке, берем кулак левой рукой
+                                        window.handsManager.handleLeftClick({
+                                            querySelector: () => ({
+                                                textContent: `Кулаки_${newFist.fistId}`
+                                            })
+                                        });
+                                    } else if (wasInRightHand) {
+                                        // Если предмет был в правой руке, берем кулак правой рукой
+                                        window.handsManager.handleRightClick({
+                                            querySelector: () => ({
+                                                textContent: `Кулаки_${newFist.fistId}`
+                                            })
+                                        });
+                                    }
+                                }
+                            }
+
+                            itemData.count--;
+                            countDisplay.textContent = itemData.count;
+                            decrease.disabled = itemData.count === 0;
+                            this.updateAllControlsState();
+                            this.loadManager.updateLoad(this.getCurrentItems());
+                            this.updateAllControlsState();
+                        }
+                    }
+                });
+
+                increase.addEventListener('click', () => {
+                    const itemData = this.items.get(item.id);
+                    
+                    // Проверяем возможность поднятия предмета
+                    const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                    const gripType = GripManager.getGripType(item.weight, characterWeight);
+                    
+                    if (!GripManager.canBePickedUp(gripType)) {
+                        increase.disabled = true;
+                        return;
+                    }
+                    
+                    // 1. Проверяем возможность размещения в сетке
+                    if (!this.gridManager.canPlaceItem(item)) {
+                        increase.disabled = true;
+                        return;
+                    }
+
+                    // 2. Проверяем текущее состояние перегруза
+                    if (this.loadManager.isOverloaded) {
+                        increase.disabled = true;
+                        return;
+                    }
+
+                    // 3. Проверяем будущую нагрузку (убираем блокировку по перегрузу!)
+                    const futureLoad = this.loadManager.currentLoad + item.weight;
+                    const wt = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+                    const maxLoad = this.loadManager.calculateMaxLoad(wt);
+                    
+                    // 4. Размещаем предмет в любом случае
+                    const position = this.gridManager.findAvailablePosition(item);
+                    if (position && this.gridManager.placeItem(item, position)) {
+                        itemData.count++;
+                        countDisplay.textContent = itemData.count;
+                        decrease.disabled = false;
+                        
+                        // Обновляем нагрузку и проверяем состояние перегруза
+                        const isOverloaded = this.loadManager.updateLoad(this.getCurrentItems());
+                        
+                        // Обновляем состояние всех контролов после размещения
+                        this.updateAllControlsState();
+                    }
+                });
+
+                increase.disabled = !this.gridManager.canPlaceItem(item);
+            }
+
+            getCurrentItems() {
+                const items = [];
+                this.items.forEach((itemData) => {
+                    for (let i = 0; i < itemData.count; i++) {
+                        items.push(itemData.item);
+                    }
+                });
+                return items;
+            }
+
+            updateAllControlsState() {
+                const characterWeight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+
+                this.items.forEach((itemData, id) => {
+                    const increase = itemData.control.querySelector('.increase');
+                    
+                    // Проверяем возможность поднятия
+                    const gripType = GripManager.getGripType(itemData.item.weight, characterWeight);
+                    const canPickUp = GripManager.canBePickedUp(gripType);
+                    
+                    // Проверяем другие условия
+                    const canPlace = this.gridManager.canPlaceItem(itemData.item);
+                    const blockDueToOverload = this.loadManager.isOverloaded;
+                    
+                    increase.disabled = !canPlace || blockDueToOverload || !canPickUp;
+                });
+            }
+
+            init() {
+                // Добавляем предметы в панель в формате (name, "[width; height]", weight)
+                const rifle = this.createItemControl('Винтовка', '[3; 1]', 3);
+                this.container.appendChild(rifle);
+                
+                const pistol = this.createItemControl('Пистолет', '[2; 1]', 2);
+                this.container.appendChild(pistol);
+                
+                const knife = this.createItemControl('Нож', '[1; 1]', 1);
+                this.container.appendChild(knife);
+            }
+        }
+
+        // Основной класс управления инвентарем
+        class InventoryManager {
+            constructor() {
+                this.gridContainer = document.querySelector('.grid-container');
+                this.rightPanel = document.querySelector('.right-panel');
+                
+                const size = parseInt(document.querySelector('#size-stats .stat-point.active').dataset.value);
+                const weight = parseInt(document.querySelector('#weight-stats .stat-point.active').dataset.value);
+
+                this.gridManager = new GridManager(
+                    this.gridContainer,
+                    weight + 1,  // rows (высота сетки)
+                    size + 1     // cols (ширина сетки)
+                );
+                window.gridManager = this.gridManager;
+
+                this.handsManager = new HandsManager();
+                window.handsManager = this.handsManager;
+                
+                // Берем первый кулак в обе руки после инициализации
+                const firstFist = this.gridManager.fists[0];
+                if (firstFist) {
+                    this.handsManager.handleBothClick({
+                        querySelector: () => ({
+                            textContent: `Кулаки_${firstFist.fistId}`
+                        })
+                    });
+                }
+
+                this.itemPanel = new ItemPanel(this.rightPanel, this.gridManager);
+                this.init();
+            }
+
+            init() {
+                this.setupStatPoints();
+            }
+
+            setupStatPoints() {
+                document.querySelectorAll('.stat-point').forEach(point => {
+                    point.addEventListener('click', e => {
+                        if (point.classList.contains('disabled')) return;
+                        
+                        const block = e.target.closest('.stat-block');
+                        block.querySelectorAll('.stat-point')
+                            .forEach(p => p.classList.remove('active'));
+                        point.classList.add('active');
+                        
+                        this.updateGridDimensions();
+                    });
+                });
+            }
+
+            updateGridDimensions() {
+                const size = parseInt(document.querySelector('#size-stats .stat-point.active').dataset.value);
+                
+                // Обновляем сетку
+                this.gridManager = new GridManager(
+                    this.gridContainer,
+                    size + 1,
+                    size + 1
+                );
+                window.gridManager = this.gridManager;
+                
+                // Пересоздаем менеджер рук
+                this.handsManager = new HandsManager();
+                window.handsManager = this.handsManager;
+                
+                // Обновляем панель предметов
+                this.rightPanel.innerHTML = '';
+                this.itemPanel = new ItemPanel(this.rightPanel, this.gridManager);
+                
+                // Даем небольшую задержку для полной инициализации DOM
+                setTimeout(() => {
+                    // Всегда берем кулаки_0 в обе руки после изменения размеров
+                    this.handsManager.handleBothClick({
+                        querySelector: () => ({
+                            textContent: 'Кулаки_0'
+                        })
+                    });
+                    
+                    this.itemPanel.updateAllControlsState();
+                }, 0);
+            }
+        }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            const inventory = new InventoryManager();
+        });
+    </script>
+</body>
+</html>
